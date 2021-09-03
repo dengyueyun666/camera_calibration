@@ -1,0 +1,6 @@
+image_path : "/home/dyy/calibration_Audio_Technica_640x480/"
+image_width : 640
+image_height : 480
+board_width : 8
+board_height : 9
+square_size : 25
