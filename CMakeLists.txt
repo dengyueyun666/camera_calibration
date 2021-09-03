@@ -16,6 +16,7 @@ include_directories(
 
 add_executable(main 
     src/main.cpp
+    src/util.cpp
 )
 target_link_libraries(main  
     ${OpenCV_LIBS}

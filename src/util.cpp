@@ -2,7 +2,6 @@
 
 int ReadFilenames(std::vector<std::string>& filenames, const std::string& directory)
 {
-
     DIR* dir;
     class dirent* ent;
     class stat st;
@@ -11,7 +10,8 @@ int ReadFilenames(std::vector<std::string>& filenames, const std::string& direct
     if (!dir) {
         return -1;
     }
-    while ((ent = readdir(dir)) != NULL) {
+    while ((ent = readdir(dir)) != NULL) 
+    {
         const std::string file_name = ent->d_name;
         const std::string full_file_name = directory + "/" + file_name;
 
