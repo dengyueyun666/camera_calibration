@@ -3,6 +3,6 @@
 
 #include <eigen3/Eigen/Dense>
 
-Eigen::MatrixXd 
+// Eigen::Matrix3d SolveHomography
 
 #endif
