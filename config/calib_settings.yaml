@@ -3,4 +3,4 @@
 image_path: /home/dyy/calibration_Audio_Technica_640x480/
 image_size: [ 640, 480 ]
 board_size: [ 8, 7 ]
-square_size: 47
+square_size: 1
