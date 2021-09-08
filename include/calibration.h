@@ -53,8 +53,8 @@ int ReadImageAndFindChessboard(
             for (int j = 0; j < board_area; j++)
             {
                 obj_pts[j] = cv::Point3f(
-                    static_cast<float>(j / config.board_size.width),
                     static_cast<float>(j % config.board_size.width),
+                    static_cast<float>(j / config.board_size.width),
                     0.0f) * config.square_size;
             }
         }
@@ -145,6 +145,10 @@ void CalculateHomography(
         H(1, 0) = h(3); H(1, 1) = h(4); H(1, 2) = h(5); 
         H(2, 0) = h(6); H(2, 1) = h(7); H(2, 2) = h(8); 
         H = pix_T.inverse() * H * obj_T;
+        if (h(8) < 0)
+        {
+            H = -H;
+        }
         Hs[i] = H;
     }
     return;
@@ -229,7 +233,7 @@ void CalculateExtrinsics(
         R.col(0) = r0;
         R.col(1) = r1;
         R.col(2) = r2;
-        Eigen::JacobiSVD<Eigen::Matrix3d> svd(R, Eigen::ComputeThinV | Eigen::ComputeThinU);
+        Eigen::JacobiSVD<Eigen::MatrixXd> svd(R, Eigen::ComputeThinV | Eigen::ComputeThinU);
         R = svd.matrixU() * svd.matrixV().transpose();
         Rs[i] = R;
         ts[i] = t;
@@ -251,7 +255,7 @@ void CalculateDistCoeffs(
     int board_count = static_cast<int>(Rs.size());
     int board_area = config.board_size.area();
     Eigen::Matrix3d A_inv = camera_matrix.inverse();
-    Eigen::MatrixXd D(2 * board_count * board_area, 2);
+    Eigen::MatrixXd D(2 * board_count * board_area, 4);
     Eigen::VectorXd d(2 * board_count * board_area);
     int row = 0;
     for (int i = 0; i < board_count; i++)
@@ -282,10 +286,15 @@ void CalculateDistCoeffs(
 
             D(row, 0) = ideal_img_pt(0) * r2;
             D(row, 1) = ideal_img_pt(0) * r4;
+            D(row, 2) = 2 * ideal_img_pt(0) * ideal_img_pt(1);
+            D(row, 3) = r2 + 2 * ideal_img_pt(0) * ideal_img_pt(0);
             d(row) = real_img_pt(0) - ideal_img_pt(0);
             row++;
+
             D(row, 0) = ideal_img_pt(1) * r2;
             D(row, 1) = ideal_img_pt(1) * r4;
+            D(row, 2) = r2 + 2 * ideal_img_pt(1) * ideal_img_pt(1);
+            D(row, 3) = 2 * ideal_img_pt(0) * ideal_img_pt(1);
             d(row) = real_img_pt(1) - ideal_img_pt(1);
             row++;
         }
@@ -293,6 +302,63 @@ void CalculateDistCoeffs(
     dist_coeffs = D.colPivHouseholderQr().solve(d);
 
     return;
+}
+
+double CalculateReprojectionError(
+    const std::vector<std::vector<cv::Point2f>>& pixel_points,
+    const std::vector<std::vector<cv::Point3f>>& object_points,
+    const Eigen::Matrix3d& camera_matrix,
+    const Eigen::VectorXd& dist_coeffs,
+    const std::vector<Eigen::Matrix3d>& Rs,
+    const std::vector<Eigen::Vector3d>& ts,
+    const Config& config
+)
+{
+    int board_count = static_cast<int>(Rs.size());
+    int board_area = config.board_size.area();
+    double k1 = dist_coeffs(0);
+    double k2 = dist_coeffs(1);
+    double p1 = dist_coeffs(2);
+    double p2 = dist_coeffs(3);
+    double err = 0;
+    for (int i = 0; i < board_count; i++)
+    {
+        const std::vector<cv::Point3f>& object_point = object_points[i];
+        const std::vector<cv::Point2f>& pixel_point = pixel_points[i];
+        for (int j = 0; j < board_area; j++)
+        {
+            Eigen::Vector3d pt;
+            pt(0) = object_point[j].x;
+            pt(1) = object_point[j].y;
+            pt(2) = object_point[j].z;
+            
+            pt = Rs[i] * pt + ts[i];
+            pt /= pt(2);
+
+            double x = pt(0);
+            double y = pt(1);
+            double xy = x * y;
+            double r2 = pt(0) * pt(0) + pt(1) * pt(1);
+            double r4 = r2 * r2;
+            double temp = 1.0 + k1 * r2 + k2 * r4;
+
+            pt(0) = x * temp + 2.0 * p1 * xy + p2 * (r2 + 2.0 * x * x);
+            pt(1) = y * temp + p1 * (r2 + 2.0 * y * y) + 2.0 * p2 * xy;
+
+            pt = camera_matrix * pt;
+
+            // std::cout << "i = " << i << ", j = " << j << std::endl;
+            // std::cout << "observe: " << pixel_point[j].x << " " 
+            //                          << pixel_point[j].y << std::endl;
+            // std::cout << "project: " << pt(0) << " " << pt(1) << std::endl;
+            
+            double dx = pixel_point[j].x - pt(0);
+            double dy = pixel_point[j].y - pt(1);
+            err += dx * dx + dy * dy;
+        }
+    }
+    err /= (board_count * board_area);
+    return err;
 }
 
 #endif

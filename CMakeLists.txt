@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.4)
 
 project(camera_calibration)
 
-set( CMAKE_BUILD_TYPE Release )
+# set( CMAKE_BUILD_TYPE Release )
 
 # 设置编译选项
 # 允许c++11标准、O3优化、多线程。match选项可避免一些cpu上的问题

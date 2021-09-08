@@ -1,6 +1,8 @@
 %YAML:1.0
 ---
-image_path: /home/dyy/calibration_Audio_Technica_640x480/
+# /home/dyy/calibration_Audio_Technica_640x480/
+# /home/dyy/calib_images/8x7_25mm/left/
+image_path: /home/dyy/calib_images/8x7_25mm/left/
 image_size: [ 640, 480 ]
 board_size: [ 8, 7 ]
 square_size: 1
