@@ -10,7 +10,15 @@
 # board_size: [ 9, 6 ]
 # /home/dyy/calibration_640x480_HPWecam/
 # /home/dyy/calibration_640x480/
+
+# Path of images
 image_path: /home/dyy/calibration_roboteye/
+
+# Image resolution
 image_size: [ 640, 480 ]
+
+# Number of inner corners in chessboard
 board_size: [ 8, 7 ]
+
+# Length of square in chessboard in millimeter
 square_size: 1

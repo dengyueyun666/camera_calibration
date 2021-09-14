@@ -85,7 +85,7 @@ int main(int argc, char** argv)
 
     double error = CalculateReprojectionError(pixel_points, object_points,
         camera_matrix, dist_coeffs, Rs, ts, config);
-    std::cout << "error(before LM) = " << error << std::endl;
+    std::cout << "error(before optimization) = " << error << std::endl;
 
     double cam_mat[4] = {camera_matrix(0, 0), camera_matrix(1, 1),
                          camera_matrix(0, 2), camera_matrix(1, 2)};
@@ -179,7 +179,7 @@ int main(int argc, char** argv)
 
     error = CalculateReprojectionError(pixel_points, object_points,
         camera_matrix, dist_coeffs, Rs, ts, config);
-    std::cout << "error(after LM) = " << error << std::endl;
+    std::cout << "error(after optimization) = " << error << std::endl;
 
     cv::Mat refined_cam_mat = cv::Mat::eye(3, 3, CV_64F);
     refined_cam_mat.at<double>(0, 0) = cam_mat[0];
