@@ -20,5 +20,5 @@ make
 * <is_auto_diff> : 0/1 --- Whether automatic differentiation is used in nonlinear optimization.
 
 ## Citations
-<a name="#1">[1]</a>
+<a name="1">[1]</a>
 Zhang, Z. (2000). A flexible new technique for camera calibration. IEEE Transactions on pattern analysis and machine intelligence, 22(11), 1330-1334.
