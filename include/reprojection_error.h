@@ -15,7 +15,6 @@ struct ReprojectionError
                     const T* const tvec,
                     const T* const cam_mat,
                     const T* const dist_coes,
-                    // const T* const obj_pt,
                     T* residuals) const
     {
         T obj_pt[3];
@@ -50,13 +49,11 @@ struct ReprojectionError
                      p1 * (r2 + 2.0 * un_img_pt_y * un_img_pt_y);
         
         // Distorted normalized image coordinates -> Pixel coordinates
-        // cam_mat[0,1,2,3,4] are alpha, beta, gamma, u0 and v0.
-        T pix_pt_x = cam_mat[0] * img_pt_x + 
-                     cam_mat[2] * img_pt_y +
-                     cam_mat[3];
-        T pix_pt_y = cam_mat[1] * img_pt_y + cam_mat[4];
+        // cam_mat[0,1,2,3] are alpha, beta, u0 and v0.
+        T pix_pt_x = cam_mat[0] * img_pt_x + cam_mat[2];
+        T pix_pt_y = cam_mat[1] * img_pt_y + cam_mat[3];
 
-        // Error
+        // Residual error
         residuals[0] = pix_pt_x - T(pixel_point.x);
         residuals[1] = pix_pt_y - T(pixel_point.y);
 
@@ -66,7 +63,7 @@ struct ReprojectionError
     static ceres::CostFunction* Create(const cv::Point2f pixel_point,
                                        const cv::Point3f object_point)
     {
-        return (new ceres::AutoDiffCostFunction<ReprojectionError, 2, 3, 3, 5, 4>(
+        return (new ceres::AutoDiffCostFunction<ReprojectionError, 2, 3, 3, 4, 4>(
             new ReprojectionError(pixel_point, object_point)));
     }
 

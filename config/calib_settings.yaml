@@ -1,8 +1,16 @@
 %YAML:1.0
 ---
+# board_size: [ 8, 7 ]
 # /home/dyy/calibration_Audio_Technica_640x480/
 # /home/dyy/calib_images/8x7_25mm/left/
-image_path: /home/dyy/calib_images/8x7_25mm/left/
+# /home/dyy/calib_images/8x7_20mm_bino/left/
+# /home/dyy/calib_images/8x7_47mm_bino/left/
+# /home/dyy/calibration_roboteye/
+
+# board_size: [ 9, 6 ]
+# /home/dyy/calibration_640x480_HPWecam/
+# /home/dyy/calibration_640x480/
+image_path: /home/dyy/calibration_roboteye/
 image_size: [ 640, 480 ]
 board_size: [ 8, 7 ]
 square_size: 1

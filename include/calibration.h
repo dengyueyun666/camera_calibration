@@ -107,16 +107,16 @@ void CalculateHomography(
         double sqrt2 = std::sqrt(2);
 
         Eigen::Matrix3d pix_T = Eigen::Matrix3d::Identity();
-        pix_T(0, 0) = sqrt2 / mean_pix_pt_dist;
-        pix_T(0, 2) = - mean_pix_pt.x * sqrt2 / mean_pix_pt_dist;
-        pix_T(1, 1) = sqrt2 / mean_pix_pt_dist;
-        pix_T(1, 2) = - mean_pix_pt.y * sqrt2 / mean_pix_pt_dist;
+        pix_T(0, 0) = sqrt2 * board_area / mean_pix_pt_dist;
+        pix_T(0, 2) = - mean_pix_pt.x * sqrt2 * board_area / mean_pix_pt_dist;
+        pix_T(1, 1) = sqrt2 * board_area / mean_pix_pt_dist;
+        pix_T(1, 2) = - mean_pix_pt.y * sqrt2 * board_area / mean_pix_pt_dist;
 
         Eigen::Matrix3d obj_T = Eigen::Matrix3d::Identity();
-        obj_T(0, 0) = sqrt2 / mean_obj_pt_dist;
-        obj_T(0, 2) = - mean_obj_pt.x * sqrt2 / mean_obj_pt_dist;
-        obj_T(1, 1) = sqrt2 / mean_obj_pt_dist;
-        obj_T(1, 2) = - mean_obj_pt.y * sqrt2 / mean_obj_pt_dist;
+        obj_T(0, 0) = sqrt2 * board_area / mean_obj_pt_dist;
+        obj_T(0, 2) = - mean_obj_pt.x * sqrt2 * board_area / mean_obj_pt_dist;
+        obj_T(1, 1) = sqrt2 * board_area / mean_obj_pt_dist;
+        obj_T(1, 2) = - mean_obj_pt.y * sqrt2 * board_area / mean_obj_pt_dist;
 
         Eigen::MatrixXd L(2 * board_area, 9);
         L.setZero();
@@ -145,66 +145,79 @@ void CalculateHomography(
         H(1, 0) = h(3); H(1, 1) = h(4); H(1, 2) = h(5); 
         H(2, 0) = h(6); H(2, 1) = h(7); H(2, 2) = h(8); 
         H = pix_T.inverse() * H * obj_T;
-        if (h(8) < 0)
-        {
-            H = -H;
-        }
+        H /= H(2, 2);
         Hs[i] = H;
     }
     return;
 }
 
+// Calculate intrinsic parameters (alpha, beta, u0, v0)
+// Note: u0 and v0 are set to half of image resolution,
+//       only alpha and beta are calculated here.
 void CalculateIntrinsics(
     const std::vector<Eigen::Matrix3d>& Hs,
     const Config& config,
     Eigen::Matrix3d& camera_matrix
 )
 {
+    double Cx = 0.5 * config.image_size.width;
+    double Cy = 0.5 * config.image_size.height;
     int board_count = static_cast<int>(Hs.size());
-    Eigen::MatrixXd V(3 * board_count, 6);
+    Eigen::MatrixXd V(2 * board_count, 2);
+    Eigen::VectorXd v(2 * board_count);
     V.setZero();
-    auto ConstructVijFromHiHj = [] (Eigen::Vector3d hi, Eigen::Vector3d hj) 
+    v.setZero();
+
+    auto ConstructVijFromHiHjCxCy = [] (Eigen::Vector3d hi, Eigen::Vector3d hj,
+                                        double Cx, double Cy) 
     { 
-        Eigen::VectorXd v(6);
-        v(0) = hi(0) * hj(0);
-        v(1) = hi(0) * hj(1) + hi(1) * hj(0);
-        v(2) = hi(1) * hj(1);
-        v(3) = hi(2) * hj(0) + hi(0) * hj(2);
-        v(4) = hi(2) * hj(1) + hi(1) * hj(2);
-        v(5) = hi(2) * hj(2);
-        return v;
+        Eigen::VectorXd vij(2);
+        vij(0) = hi(0) * hj(0) - Cx * (hi(0) * hj(2) + hi(2) * hj(0)) +
+                 Cx * Cx * hi(2) * hj(2);
+        vij(1) = hi(1) * hj(1) - Cy * (hi(1) * hj(2) + hi(2) * hj(1)) +
+                 Cy * Cy * hi(2) * hj(2);
+        return vij;
     };
 
     for (int i = 0; i < board_count; i++)
     {
         Eigen::Vector3d h0 = Hs[i].col(0);
         Eigen::Vector3d h1 = Hs[i].col(1);
-        Eigen::VectorXd v01 = ConstructVijFromHiHj(h0, h1);
-        Eigen::VectorXd v00 = ConstructVijFromHiHj(h0, h0);
-        Eigen::VectorXd v11 = ConstructVijFromHiHj(h1, h1);
-        V.row(i * 3) = v01.transpose();
-        V.row(i * 3 + 1) = (v00 - v11).transpose();
+        Eigen::VectorXd v01 = ConstructVijFromHiHjCxCy(h0, h1, Cx, Cy);
+        Eigen::VectorXd v00 = ConstructVijFromHiHjCxCy(h0, h0, Cx, Cy);
+        Eigen::VectorXd v11 = ConstructVijFromHiHjCxCy(h1, h1, Cx, Cy);
+        V.row(i * 2) = v01.transpose();
+        V.row(i * 2 + 1) = (v00 - v11).transpose();
+        v(i * 2) = - h0(2) * h1(2);
+        v(i * 2 + 1) = h1(2) * h1(2) - h0(2) * h0(2);
     }
 
-    Eigen::JacobiSVD<Eigen::MatrixXd> svd(V, Eigen::ComputeThinV);
-    Eigen::VectorXd b = svd.matrixV().rightCols(1);
+    Eigen::VectorXd b = V.colPivHouseholderQr().solve(v);
 
-    double v0 = (b(1) * b(3) - b(0) * b(4)) / (b(0) * b(2) - b(1) * b(1));
-    double lambda = b(5) - (b(3) * b(3) + v0 * (b(1) * b(3) - b(0) * b(4))) / b(0);
-    double alpha = std::sqrt(lambda / b(0));
-    double beta = std::sqrt(lambda * b(0) / (b(0) * b(2) - b(1) * b(1)));
-    double gamma = - b(1) * alpha * alpha * beta / lambda;
-    double u0 = gamma * v0 / beta - b(3) * alpha * alpha / lambda;
+    double B11 = b(0);
+    double B12 = 0;
+    double B22 = b(1);
+    double B13 = -Cx * B11;
+    double B23 = -Cy * B22;
+    double B33 = Cx * Cx * B11 + Cy * Cy * B22 + 1;
+
+    double v0 = (B12 * B13 - B11 * B23) / (B11 * B22 - B12 * B12);
+    double lambda = B33 - (B13 * B13 + v0 * (B12 * B13 - B11 * B23)) / B11;
+    double alpha = std::sqrt(lambda / B11);
+    double beta = std::sqrt(lambda * B11 / (B11 * B22 - B12 * B12));
+    double gamma = - B12 * alpha * alpha * beta / lambda;
+    double u0 = gamma * v0 / beta - B13 * alpha * alpha / lambda;
     camera_matrix.setIdentity();
     camera_matrix(0, 0) = alpha;
-    camera_matrix(0, 1) = gamma;
-    camera_matrix(0, 2) = u0;
+    camera_matrix(0, 1) = gamma; //It will be zero.
+    camera_matrix(0, 2) = u0;    //It will be half of image width.
     camera_matrix(1, 1) = beta;
-    camera_matrix(1, 2) = v0;
+    camera_matrix(1, 2) = v0;    //It will be half of image height;
 
     return;
 }
 
+// Calculate extrinsic parameters (R, t) for each image.
 void CalculateExtrinsics(
     const std::vector<Eigen::Matrix3d>& Hs,
     const Eigen::Matrix3d& camera_matrix,
@@ -227,8 +240,9 @@ void CalculateExtrinsics(
         Eigen::Vector3d r0 = lambda0 * A_inv * h0;
         Eigen::Vector3d r1 = lambda1 * A_inv * h1;
         Eigen::Vector3d r2 = r0.cross(r1);
-        Eigen::Vector3d t = lambda0 * A_inv * h2;
+        Eigen::Vector3d t = 0.5 * (lambda0 + lambda1) * A_inv * h2;
 
+        // Solve the best rotation matrix to approximate a given 3 x 3 matrix R
         Eigen::Matrix3d R;
         R.col(0) = r0;
         R.col(1) = r1;
@@ -242,6 +256,7 @@ void CalculateExtrinsics(
     return;
 }
 
+// Calculate distortion coefficients (k1, k2, p1, p2)
 void CalculateDistCoeffs(
     const std::vector<std::vector<cv::Point2f>>& pixel_points,
     const std::vector<std::vector<cv::Point3f>>& object_points,
@@ -304,6 +319,7 @@ void CalculateDistCoeffs(
     return;
 }
 
+// Calculate reprojection error.
 double CalculateReprojectionError(
     const std::vector<std::vector<cv::Point2f>>& pixel_points,
     const std::vector<std::vector<cv::Point3f>>& object_points,
@@ -347,11 +363,6 @@ double CalculateReprojectionError(
 
             pt = camera_matrix * pt;
 
-            // std::cout << "i = " << i << ", j = " << j << std::endl;
-            // std::cout << "observe: " << pixel_point[j].x << " " 
-            //                          << pixel_point[j].y << std::endl;
-            // std::cout << "project: " << pt(0) << " " << pt(1) << std::endl;
-            
             double dx = pixel_point[j].x - pt(0);
             double dy = pixel_point[j].y - pt(1);
             err += dx * dx + dy * dy;
