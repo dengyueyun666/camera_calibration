@@ -1,6 +1,11 @@
 # camera_calibration
 This is a monocular camera calibration project without using cv::calibrateCamera() function. The calibration is based on Zhang<a href="#1">[1]</a>. The project uses OpenCV to read images and find chessboards, uses Eigen to linearly solve initial parameters and uses Ceres for nonlinear optimization. During optimization, you can choose to use automatic differentiation or analytical differentiation.
 
+## Parameters to be solved
+* Camera intrinsics : alpha, beta, u0, v0
+* Distortion coefficients : k1, k2, p1, p2
+* Camera extrinsics : R, t for each image
+
 ## Requirements
 * Cmake
 * OpenCV3
