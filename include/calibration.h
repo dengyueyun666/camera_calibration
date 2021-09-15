@@ -103,20 +103,22 @@ void CalculateHomography(
                 std::pow(object_point[j].x - mean_obj_pt.x, 2) +
                 std::pow(object_point[j].y - mean_obj_pt.y, 2));
         }
+        mean_pix_pt_dist /= board_area;
+        mean_obj_pt_dist /= board_area;
 
         double sqrt2 = std::sqrt(2);
 
         Eigen::Matrix3d pix_T = Eigen::Matrix3d::Identity();
-        pix_T(0, 0) = sqrt2 * board_area / mean_pix_pt_dist;
-        pix_T(0, 2) = - mean_pix_pt.x * sqrt2 * board_area / mean_pix_pt_dist;
-        pix_T(1, 1) = sqrt2 * board_area / mean_pix_pt_dist;
-        pix_T(1, 2) = - mean_pix_pt.y * sqrt2 * board_area / mean_pix_pt_dist;
+        pix_T(0, 0) = sqrt2 / mean_pix_pt_dist;
+        pix_T(0, 2) = - mean_pix_pt.x * sqrt2 / mean_pix_pt_dist;
+        pix_T(1, 1) = sqrt2 / mean_pix_pt_dist;
+        pix_T(1, 2) = - mean_pix_pt.y * sqrt2 / mean_pix_pt_dist;
 
         Eigen::Matrix3d obj_T = Eigen::Matrix3d::Identity();
-        obj_T(0, 0) = sqrt2 * board_area / mean_obj_pt_dist;
-        obj_T(0, 2) = - mean_obj_pt.x * sqrt2 * board_area / mean_obj_pt_dist;
-        obj_T(1, 1) = sqrt2 * board_area / mean_obj_pt_dist;
-        obj_T(1, 2) = - mean_obj_pt.y * sqrt2 * board_area / mean_obj_pt_dist;
+        obj_T(0, 0) = sqrt2 / mean_obj_pt_dist;
+        obj_T(0, 2) = - mean_obj_pt.x * sqrt2 / mean_obj_pt_dist;
+        obj_T(1, 1) = sqrt2 / mean_obj_pt_dist;
+        obj_T(1, 2) = - mean_obj_pt.y * sqrt2 / mean_obj_pt_dist;
 
         Eigen::MatrixXd L(2 * board_area, 9);
         L.setZero();
